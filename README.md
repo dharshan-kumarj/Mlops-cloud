@@ -50,7 +50,15 @@ This will:
 - Save `ensemble.pkl` and `vectorizer.pkl`
 - Run verification predictions
 
-### 3. Use the saved model
+### 3. Evaluate the model
+
+```bash
+python evaluate.py
+```
+
+This will show full test-set metrics (accuracy, precision, recall, F1, ROC-AUC), confusion matrix, confidence stats, misclassified samples, batch predictions on 8 example texts, and an **interactive mode** where you can type any message to classify it.
+
+### 4. Use the saved model
 
 ```python
 import re
@@ -76,6 +84,7 @@ mlops/
 ├── Dataset/
 │   └── spam.csv          # SMS Spam Collection
 ├── train.py              # Training pipeline
+├── evaluate.py           # Evaluation & interactive inference
 ├── ensemble.pkl          # Saved ensemble model (generated)
 ├── vectorizer.pkl        # Saved TF-IDF vectorizer (generated)
 ├── .gitignore
