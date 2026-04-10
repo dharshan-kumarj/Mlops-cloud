@@ -76,6 +76,7 @@ def root():
     """Serve the frontend UI."""
     return FileResponse(STATIC_DIR / "index.html")
 
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # ──────────────────────────────────────────────
 # Schemas

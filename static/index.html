@@ -3,517 +3,337 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Spam Classifier</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #0f0f13;
-      --surface: #1a1a24;
-      --surface2: #22222f;
-      --border: #2e2e3e;
-      --text: #e4e4ed;
-      --text-dim: #8888a0;
-      --accent: #7c5cfc;
-      --accent-glow: rgba(124, 92, 252, 0.25);
-      --green: #34d399;
-      --red: #f87171;
-      --amber: #fbbf24;
-      --radius: 14px;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 2rem 1rem;
-    }
-
-    .container {
-      max-width: 860px;
-      margin: 0 auto;
-    }
-
-    /* ── Header ── */
-    header {
-      text-align: center;
-      margin-bottom: 2.5rem;
-    }
-    header h1 {
-      font-size: 2rem;
-      font-weight: 700;
-      background: linear-gradient(135deg, #7c5cfc, #c084fc);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    header p {
-      color: var(--text-dim);
-      margin-top: .4rem;
-      font-size: .95rem;
-    }
-
-    /* ── Stats bar ── */
-    .stats-bar {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: .75rem;
-      margin-bottom: 2rem;
-    }
-    .stat-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1rem;
-      text-align: center;
-      transition: transform .2s, border-color .2s;
-    }
-    .stat-card:hover {
-      transform: translateY(-2px);
-      border-color: var(--accent);
-    }
-    .stat-card .value {
-      font-size: 1.6rem;
-      font-weight: 700;
-    }
-    .stat-card .label {
-      color: var(--text-dim);
-      font-size: .78rem;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      margin-top: .2rem;
-    }
-    .stat-card.total .value  { color: var(--accent); }
-    .stat-card.ham .value    { color: var(--green); }
-    .stat-card.spam .value   { color: var(--red); }
-    .stat-card.health .value { font-size: 1rem; }
-
-    /* ── Predict section ── */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
-    .card h2 {
-      font-size: 1.1rem;
-      font-weight: 600;
-      margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      gap: .5rem;
-    }
-
-    .input-group {
-      display: flex;
-      gap: .75rem;
-    }
-    .input-group textarea {
-      flex: 1;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      color: var(--text);
-      padding: .85rem 1rem;
-      font-family: inherit;
-      font-size: .95rem;
-      resize: vertical;
-      min-height: 56px;
-      max-height: 140px;
-      outline: none;
-      transition: border-color .2s;
-    }
-    .input-group textarea:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-glow);
-    }
-    .input-group textarea::placeholder {
-      color: var(--text-dim);
-    }
-
-    button {
-      cursor: pointer;
-      font-family: inherit;
-      font-weight: 600;
-      border: none;
-      border-radius: 10px;
-      transition: all .2s;
-    }
-    .btn-primary {
-      background: linear-gradient(135deg, #7c5cfc, #6548d9);
-      color: #fff;
-      padding: .85rem 1.8rem;
-      font-size: .95rem;
-      white-space: nowrap;
-    }
-    .btn-primary:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 20px var(--accent-glow);
-    }
-    .btn-primary:active { transform: scale(.97); }
-    .btn-primary:disabled {
-      opacity: .5;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    /* ── Result ── */
-    .result {
-      margin-top: 1.2rem;
-      display: none;
-    }
-    .result.visible { display: block; }
-
-    .result-banner {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 1rem 1.2rem;
-      border-radius: 10px;
-      font-weight: 600;
-      font-size: 1.05rem;
-    }
-    .result-banner.spam {
-      background: rgba(248, 113, 113, .1);
-      border: 1px solid rgba(248, 113, 113, .3);
-      color: var(--red);
-    }
-    .result-banner.ham {
-      background: rgba(52, 211, 153, .1);
-      border: 1px solid rgba(52, 211, 153, .3);
-      color: var(--green);
-    }
-    .result-banner .icon { font-size: 1.6rem; }
-    .result-meta {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: .6rem;
-      margin-top: .8rem;
-    }
-    .result-meta .meta-item {
-      background: var(--surface2);
-      border-radius: 8px;
-      padding: .65rem .8rem;
-      text-align: center;
-    }
-    .result-meta .meta-item .val {
-      font-size: 1.1rem;
-      font-weight: 700;
-    }
-    .result-meta .meta-item .lbl {
-      color: var(--text-dim);
-      font-size: .72rem;
-      text-transform: uppercase;
-      margin-top: .15rem;
-    }
-
-    /* ── History section ── */
-    .filter-bar {
-      display: flex;
-      gap: .5rem;
-      margin-bottom: 1rem;
-      flex-wrap: wrap;
-    }
-    .filter-btn {
-      background: var(--surface2);
-      color: var(--text-dim);
-      padding: .45rem 1rem;
-      font-size: .82rem;
-      border: 1px solid var(--border);
-    }
-    .filter-btn.active {
-      background: var(--accent);
-      color: #fff;
-      border-color: var(--accent);
-    }
-
-    .history-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .history-table th {
-      text-align: left;
-      color: var(--text-dim);
-      font-size: .75rem;
-      text-transform: uppercase;
-      letter-spacing: .04em;
-      padding: .6rem .8rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .history-table td {
-      padding: .7rem .8rem;
-      border-bottom: 1px solid var(--border);
-      font-size: .88rem;
-      vertical-align: middle;
-    }
-    .history-table tr:last-child td { border-bottom: none; }
-    .history-table tr:hover td {
-      background: rgba(124, 92, 252, .04);
-    }
-    .history-table .text-col {
-      max-width: 320px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .badge {
-      display: inline-block;
-      padding: .2rem .6rem;
-      border-radius: 6px;
-      font-size: .76rem;
-      font-weight: 600;
-    }
-    .badge.spam {
-      background: rgba(248, 113, 113, .15);
-      color: var(--red);
-    }
-    .badge.ham {
-      background: rgba(52, 211, 153, .15);
-      color: var(--green);
-    }
-
-    .empty-state {
-      text-align: center;
-      color: var(--text-dim);
-      padding: 2rem;
-      font-size: .9rem;
-    }
-
-    /* ── Loading spinner ── */
-    .spinner {
-      display: inline-block;
-      width: 18px; height: 18px;
-      border: 2px solid rgba(255,255,255,.3);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin .6s linear infinite;
-      vertical-align: middle;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── Responsive ── */
-    @media (max-width: 640px) {
-      .stats-bar { grid-template-columns: repeat(2, 1fr); }
-      .input-group { flex-direction: column; }
-      .result-meta { grid-template-columns: 1fr; }
-    }
-  </style>
+  <title>MUI Spam Classifier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="/static/style.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <div class="container">
-    <!-- Header -->
-    <header>
-      <h1>🛡️ Spam Classifier</h1>
-      <p>Calibrated ensemble model · GaussianNB + LogisticRegression + SVC</p>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="material-icons">data_usage</span>
+      Classifi
+    </div>
+    <div class="nav-links">
+      <div class="nav-item active" onclick="switchPage('classification', this)">
+        <span class="material-icons">analytics</span> <span>Classification</span>
+      </div>
+      <div class="nav-item" onclick="switchPage('analytics', this)">
+        <span class="material-icons">bar_chart</span> <span>Analytics Report</span>
+      </div>
+      <div class="nav-item" onclick="switchPage('history', this)">
+        <span class="material-icons">history</span> <span>Detection History</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main class="main-content">
+    <header class="app-bar" id="app-bar-title">
+      Classification
     </header>
 
-    <!-- Stats -->
-    <div class="stats-bar">
-      <div class="stat-card total">
-        <div class="value" id="stat-total">—</div>
-        <div class="label">Total</div>
-      </div>
-      <div class="stat-card ham">
-        <div class="value" id="stat-ham">—</div>
-        <div class="label">Ham</div>
-      </div>
-      <div class="stat-card spam">
-        <div class="value" id="stat-spam">—</div>
-        <div class="label">Spam</div>
-      </div>
-      <div class="stat-card health">
-        <div class="value" id="stat-health">…</div>
-        <div class="label">API Status</div>
-      </div>
-    </div>
-
-    <!-- Predict -->
-    <div class="card">
-      <h2>✉️ Classify a Message</h2>
-      <div class="input-group">
-        <textarea id="msg-input" placeholder="Type or paste an SMS message…" rows="2"></textarea>
-        <button class="btn-primary" id="predict-btn" onclick="predict()">Classify</button>
-      </div>
-      <div class="result" id="result">
-        <div class="result-banner" id="result-banner">
-          <span class="icon" id="result-icon"></span>
-          <span id="result-label"></span>
+    <!-- Page 1: Classification -->
+    <div id="page-classification" class="page active">
+      <div class="card">
+        <h2 class="card-title">Analyze New Message</h2>
+        <div class="form-group">
+          <textarea id="input" placeholder="Paste the SMS or message content here to analyze its safety..."></textarea>
         </div>
-        <div class="result-meta">
-          <div class="meta-item">
-            <div class="val" id="r-confidence">—</div>
-            <div class="lbl">Confidence</div>
+        <div class="btn-actions">
+          <button class="btn" id="btn" onclick="predict()">
+            <span class="material-icons" style="font-size: 18px;">search</span> ANALYZE MESSAGE
+          </button>
+        </div>
+        
+        <!-- Results -->
+        <div class="result-banner" id="rh">
+          <span class="material-icons" id="result-icon">info</span>
+          <span id="result-text">Waiting for input...</span>
+        </div>
+        
+        <div class="metrics" id="metrics-panel">
+          <div class="metric-item">
+            <div class="lbl">Confidence Score</div>
+            <div class="val" id="r-conf">&mdash;</div>
           </div>
-          <div class="meta-item">
-            <div class="val" id="r-ham-prob">—</div>
-            <div class="lbl">Ham Prob</div>
+          <div class="metric-item">
+            <div class="lbl">Ham Probability</div>
+            <div class="val" id="r-ham">&mdash;</div>
           </div>
-          <div class="meta-item">
-            <div class="val" id="r-spam-prob">—</div>
-            <div class="lbl">Spam Prob</div>
+          <div class="metric-item">
+            <div class="lbl">Spam Probability</div>
+            <div class="val" id="r-spam">&mdash;</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- History -->
-    <div class="card">
-      <h2>📋 Prediction History</h2>
-      <div class="filter-bar">
-        <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
-        <button class="filter-btn" onclick="setFilter('spam', this)">🚫 Spam</button>
-        <button class="filter-btn" onclick="setFilter('ham', this)">✅ Ham</button>
+    <!-- Page 2: Analytics -->
+    <div id="page-analytics" class="page">
+      <div class="card">
+        <h2 class="card-title">System Metrics</h2>
+        <div class="stats-container">
+          <div class="stat-box">
+            <div class="title">Total Processed</div>
+            <div class="value" id="s-total">&mdash;</div>
+          </div>
+          <div class="stat-box">
+            <div class="title">Safe (Ham)</div>
+            <div class="value" id="s-ham" style="color: #2e7d32;">&mdash;</div>
+          </div>
+          <div class="stat-box">
+            <div class="title">Spam Detected</div>
+            <div class="value" id="s-spam" style="color: #d32f2f;">&mdash;</div>
+          </div>
+          <div class="stat-box">
+            <div class="title">System Status</div>
+            <div class="value" id="s-health" style="font-size: 24px; margin-top: 10px;">&hellip;</div>
+          </div>
+        </div>
       </div>
-      <div id="history-container">
-        <div class="empty-state">No predictions yet. Classify a message above!</div>
+      
+      <div class="card">
+        <h2 class="card-title">Spam Report Visualization</h2>
+        <div style="position: relative; height:300px; width:100%">
+          <canvas id="spamChart"></canvas>
+        </div>
       </div>
     </div>
-  </div>
+
+    <!-- Page 3: History -->
+    <div id="page-history" class="page">
+      <div class="card">
+        <h2 class="card-title">Prediction Logs</h2>
+        <div class="filters">
+          <button class="filter-btn active" onclick="filterHistory('all', this)">All</button>
+          <button class="filter-btn" onclick="filterHistory('ham', this)">Safe Only</button>
+          <button class="filter-btn" onclick="filterHistory('spam', this)">Spam Only</button>
+        </div>
+        
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Message Content</th>
+                <th>Result</th>
+                <th>Confidence</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody id="history-body">
+              <tr>
+                <td colspan="5">
+                  <div class="empty">Loading...</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
 
   <script>
-    const API = '';  // same origin
+    let activeFilter = 'all';
+    let chartInstance = null;
 
-    // ── Stats & Health ──
+    // Page Switching Logic
+    function switchPage(pageId, navElement) {
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      navElement.classList.add('active');
+      
+      const titles = {
+        'classification': 'Classification',
+        'analytics': 'Analytics Report',
+        'history': 'Detection History'
+      };
+      document.getElementById('app-bar-title').innerText = titles[pageId];
+
+      document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+      document.getElementById('page-' + pageId).classList.add('active');
+
+      if (pageId === 'analytics') loadStats();
+      if (pageId === 'history') loadHistory();
+    }
+
+    function initChart(hamCount, spamCount) {
+      const ctx = document.getElementById('spamChart').getContext('2d');
+      if (chartInstance) {
+        chartInstance.data.datasets[0].data = [hamCount, spamCount];
+        chartInstance.update();
+        return;
+      }
+      chartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Safe (Ham)', 'Spam'],
+          datasets: [{
+            data: [hamCount, spamCount],
+            backgroundColor: ['#eaeaea', '#000000'],
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '70%',
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: {
+                font: {
+                  family: 'Inter',
+                  size: 14,
+                  weight: '600'
+                },
+                color: '#000'
+              }
+            }
+          }
+        }
+      });
+    }
+
     async function loadStats() {
       try {
-        const res = await fetch(`${API}/predictions/stats`);
-        const data = await res.json();
-        document.getElementById('stat-total').textContent = data.total_predictions;
-        document.getElementById('stat-ham').textContent = data.ham_count;
-        document.getElementById('stat-spam').textContent = data.spam_count;
-      } catch { /* silent */ }
+        const d = await (await fetch('/predictions/stats')).json();
+        const total = d.total_predictions || 0;
+        const ham = d.ham_count || 0;
+        const spam = d.spam_count || 0;
+        
+        document.getElementById('s-total').textContent = total;
+        document.getElementById('s-ham').textContent = ham;
+        document.getElementById('s-spam').textContent = spam;
+        
+        initChart(ham, spam);
+      } catch (e) {
+        console.error("Failed to load stats", e);
+      }
     }
 
     async function loadHealth() {
-      const el = document.getElementById('stat-health');
+      const el = document.getElementById('s-health');
       try {
-        const res = await fetch(`${API}/health`);
-        const data = await res.json();
-        if (data.status === 'ok' && data.model_loaded) {
-          el.textContent = '● Online';
-          el.style.color = 'var(--green)';
+        const d = await (await fetch('/health')).json();
+        if(d.status === 'ok' && d.model_loaded) {
+          el.textContent = 'ONLINE';
+          el.style.color = '#2e7d32'; // Make it pop just slightly
         } else {
-          el.textContent = '● Degraded';
-          el.style.color = 'var(--amber)';
+          el.textContent = 'DEGRADED';
+          el.style.color = '#f57c00';
         }
       } catch {
-        el.textContent = '● Offline';
-        el.style.color = 'var(--red)';
+        el.textContent = 'OFFLINE';
+        el.style.color = '#d32f2f';
       }
     }
 
-    // ── Predict ──
     async function predict() {
-      const input = document.getElementById('msg-input');
-      const btn = document.getElementById('predict-btn');
-      const text = input.value.trim();
+      const text = document.getElementById('input').value.trim();
       if (!text) return;
-
+      
+      const btn = document.getElementById('btn');
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner"></span>';
-
+      btn.innerHTML = '<span class="material-icons" style="font-size: 18px;">hourglass_empty</span> ANALYZING...';
+      
       try {
-        const res = await fetch(`${API}/predict`, {
+        const res = await fetch('/predict', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text }),
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({text}),
         });
-        const data = await res.json();
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.detail || 'Error');
 
-        if (!res.ok) throw new Error(data.detail || 'Request failed');
-
-        // Show result
-        const result = document.getElementById('result');
-        const banner = document.getElementById('result-banner');
-        const icon = document.getElementById('result-icon');
-        const label = document.getElementById('result-label');
-
-        banner.className = `result-banner ${data.prediction}`;
-        icon.textContent = data.prediction === 'spam' ? '🚫' : '✅';
-        label.textContent = data.prediction === 'spam'
-          ? 'This message is SPAM'
-          : 'This message is HAM (safe)';
-
-        document.getElementById('r-confidence').textContent = data.confidence + '%';
-        document.getElementById('r-ham-prob').textContent = data.ham_probability.toFixed(4);
-        document.getElementById('r-spam-prob').textContent = data.spam_probability.toFixed(4);
-
-        result.classList.add('visible');
-
-        // Refresh history & stats
+        const rh = document.getElementById('rh');
+        const rIcon = document.getElementById('result-icon');
+        const rText = document.getElementById('result-text');
+        
+        rh.className = 'result-banner visible ' + d.prediction;
+        
+        if (d.prediction === 'spam') {
+          rIcon.innerText = 'warning';
+          rText.innerHTML = '<strong>SPAM DETECTED:</strong> This message has been flagged as malicious.';
+        } else {
+          rIcon.innerText = 'verified_user';
+          rText.innerHTML = '<strong>SAFE MESSAGE:</strong> This message appears to be standard ham.';
+        }
+        
+        document.getElementById('r-conf').innerHTML = '<strong>' + d.confidence + '%</strong>';
+        document.getElementById('r-ham').innerHTML = '<strong>' + d.ham_probability.toFixed(4) + '</strong>';
+        document.getElementById('r-spam').innerHTML = '<strong>' + d.spam_probability.toFixed(4) + '</strong>';
+        
+        document.getElementById('metrics-panel').classList.add('visible');
         loadStats();
-        loadHistory();
-      } catch (err) {
-        alert('Error: ' + err.message);
+      } catch (e) {
+        alert(e.message);
       } finally {
         btn.disabled = false;
-        btn.textContent = 'Classify';
+        btn.innerHTML = '<span class="material-icons" style="font-size: 18px;">search</span> ANALYZE MESSAGE';
       }
     }
 
-    // Submit on Enter (Shift+Enter for newline)
-    document.getElementById('msg-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        predict();
+    document.getElementById('input').addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { 
+        e.preventDefault(); 
+        predict(); 
       }
     });
 
-    // ── History ──
-    let currentFilter = 'all';
-
-    function setFilter(filter, el) {
-      currentFilter = filter;
-      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    function filterHistory(f, el) {
+      activeFilter = f;
+      document.querySelectorAll('.filter-btn').forEach(t => t.classList.remove('active'));
       el.classList.add('active');
       loadHistory();
     }
 
     async function loadHistory() {
-      const container = document.getElementById('history-container');
+      const tbody = document.getElementById('history-body');
       try {
-        let url = `${API}/predictions?limit=50`;
-        if (currentFilter !== 'all') url += `&label=${currentFilter}`;
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (!data.length) {
-          container.innerHTML = '<div class="empty-state">No predictions found.</div>';
-          return;
+        let url = '/predictions?limit=50';
+        if (activeFilter !== 'all') url += '&label=' + activeFilter;
+        
+        const data = await (await fetch(url)).json();
+        
+        if (!data.length) { 
+          tbody.innerHTML = '<tr><td colspan="5"><div class="empty">No predictions recorded yet.</div></td></tr>'; 
+          return; 
         }
 
-        let html = `<table class="history-table">
-          <thead><tr>
-            <th>#</th><th>Message</th><th>Result</th><th>Confidence</th><th>Time</th>
-          </tr></thead><tbody>`;
-
+        let h = '';
         data.forEach(r => {
-          const time = new Date(r.created_at).toLocaleString();
-          html += `<tr>
-            <td>${r.id}</td>
-            <td class="text-col" title="${r.input_text.replace(/"/g, '&quot;')}">${escapeHtml(r.input_text)}</td>
-            <td><span class="badge ${r.prediction}">${r.prediction}</span></td>
-            <td>${r.confidence}%</td>
-            <td style="color:var(--text-dim);font-size:.8rem">${time}</td>
-          </tr>`;
+          const t = new Date(r.created_at).toLocaleString(undefined, {
+            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+          });
+          h += '<tr>'
+            + '<td><strong>#' + r.id + '</strong></td>'
+            + '<td class="cell-text" title="' + esc(r.input_text) + '"><strong>' + esc(r.input_text) + '</strong></td>'
+            + '<td><span class="chip ' + r.prediction + '">' + r.prediction + '</span></td>'
+            + '<td><strong>' + r.confidence + '%</strong></td>'
+            + '<td class="time-cell">' + t + '</td>'
+            + '</tr>';
         });
-
-        html += '</tbody></table>';
-        container.innerHTML = html;
+        tbody.innerHTML = h;
       } catch {
-        container.innerHTML = '<div class="empty-state">Failed to load history.</div>';
+        tbody.innerHTML = '<tr><td colspan="5"><div class="empty">Failed to load history data.</div></td></tr>';
       }
     }
 
-    function escapeHtml(str) {
-      const div = document.createElement('div');
-      div.textContent = str;
-      return div.innerHTML;
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
     }
 
-    // ── Init ──
     loadHealth();
     loadStats();
     loadHistory();
