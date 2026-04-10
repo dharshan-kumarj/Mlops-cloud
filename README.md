@@ -1,6 +1,6 @@
 # SMS Spam Classification Pipeline
 
-An ensemble ML pipeline for SMS spam detection using **3 calibrated scikit-learn models** with soft voting.
+An ensemble ML pipeline for SMS spam detection using **3 calibrated scikit-learn models** with soft voting, served via **FastAPI** with **PostgreSQL** persistence.
 
 ## Architecture
 
@@ -33,7 +33,7 @@ Each base model is wrapped with `CalibratedClassifierCV(cv=5)` for reliable prob
 ```bash
 uv venv .venv
 source .venv/bin/activate
-uv pip install scikit-learn pandas numpy joblib
+uv pip install scikit-learn pandas numpy joblib fastapi uvicorn sqlalchemy psycopg2-binary python-dotenv
 ```
 
 ### 2. Train the model
@@ -58,7 +58,37 @@ python evaluate.py
 
 This will show full test-set metrics (accuracy, precision, recall, F1, ROC-AUC), confusion matrix, confidence stats, misclassified samples, batch predictions on 8 example texts, and an **interactive mode** where you can type any message to classify it.
 
-### 4. Use the saved model
+### 4. Configure PostgreSQL
+
+Edit `.env` with your database credentials:
+
+```env
+DATABASE_URL=postgresql://user:password@localhost:5432/spam_db
+```
+
+### 5. Run the API
+
+```bash
+uvicorn app:app --reload
+```
+
+API docs at [http://localhost:8000/docs](http://localhost:8000/docs)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/predict` | POST | Classify a message → saved to Postgres |
+| `/predictions` | GET | List past predictions (filter by `?label=spam`) |
+| `/predictions/stats` | GET | Spam/ham counts |
+| `/health` | GET | Health check |
+
+**Example:**
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H 'Content-Type: application/json' \
+  -d '{"text": "You won a free iPhone!"}'
+```
+
+### 6. Use the saved model directly
 
 ```python
 import re
@@ -85,6 +115,9 @@ mlops/
 │   └── spam.csv          # SMS Spam Collection
 ├── train.py              # Training pipeline
 ├── evaluate.py           # Evaluation & interactive inference
+├── app.py                # FastAPI application
+├── database.py           # SQLAlchemy models & DB config
+├── .env                  # PostgreSQL credentials (not committed)
 ├── ensemble.pkl          # Saved ensemble model (generated)
 ├── vectorizer.pkl        # Saved TF-IDF vectorizer (generated)
 ├── .gitignore
