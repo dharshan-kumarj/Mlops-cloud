@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MUI Spam Classifier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="/static/style.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="material-icons">data_usage</span>
+      Classifi
+    </div>
+    <div class="nav-links">
+      <div class="nav-item active" onclick="switchPage('classification', this)">
+        <span class="material-icons">analytics</span> <span>Classification</span>
+      </div>
+      <div class="nav-item" onclick="switchPage('analytics', this)">
+        <span class="material-icons">bar_chart</span> <span>Analytics Report</span>
+      </div>
+      <div class="nav-item" onclick="switchPage('history', this)">
+        <span class="material-icons">history</span> <span>Detection History</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main class="main-content">
+    <header class="app-bar" id="app-bar-title">
+      Classification
+    </header>
+
+    <!-- Page 1: Classification -->
+    <div id="page-classification" class="page active">
+      <div class="card">
+        <h2 class="card-title">Analyze New Message</h2>
+        <div class="form-group">
+          <textarea id="input" placeholder="Paste the SMS or message content here to analyze its safety..."></textarea>
+        </div>
+        <div class="btn-actions">
+          <button class="btn" id="btn" onclick="predict()">
+            <span class="material-icons" style="font-size: 18px;">search</span> ANALYZE MESSAGE
+          </button>
+        </div>
+        
+        <!-- Results -->
+        <div class="result-banner" id="rh">
+          <span class="material-icons" id="result-icon">info</span>
+          <span id="result-text">Waiting for input...</span>
+        </div>
+        
+        <div class="metrics" id="metrics-panel">
+          <div class="metric-item">
+            <div class="lbl">Confidence Score</div>
+            <div class="val" id="r-conf">&mdash;</div>
+          </div>
+          <div class="metric-item">
+            <div class="lbl">Ham Probability</div>
+            <div class="val" id="r-ham">&mdash;</div>
+          </div>
+          <div class="metric-item">
+            <div class="lbl">Spam Probability</div>
+            <div class="val" id="r-spam">&mdash;</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page 2: Analytics -->
+    <div id="page-analytics" class="page">
+      <div class="card">
+        <h2 class="card-title">System Metrics</h2>
+        <div class="stats-container">
+          <div class="stat-box">
+            <div class="title">Total Processed</div>
+            <div class="value" id="s-total">&mdash;</div>
+          </div>
+          <div class="stat-box">
+            <div class="title">Safe (Ham)</div>
+            <div class="value" id="s-ham" style="color: #2e7d32;">&mdash;</div>
+          </div>
+          <div class="stat-box">
+            <div class="title">Spam Detected</div>
+            <div class="value" id="s-spam" style="color: #d32f2f;">&mdash;</div>
+          </div>
+          <div class="stat-box">
+            <div class="title">System Status</div>
+            <div class="value" id="s-health" style="font-size: 24px; margin-top: 10px;">&hellip;</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2 class="card-title">Spam Report Visualization</h2>
+        <div style="position: relative; height:300px; width:100%">
+          <canvas id="spamChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page 3: History -->
+    <div id="page-history" class="page">
+      <div class="card">
+        <h2 class="card-title">Prediction Logs</h2>
+        <div class="filters">
+          <button class="filter-btn active" onclick="filterHistory('all', this)">All</button>
+          <button class="filter-btn" onclick="filterHistory('ham', this)">Safe Only</button>
+          <button class="filter-btn" onclick="filterHistory('spam', this)">Spam Only</button>
+        </div>
+        
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Message Content</th>
+                <th>Result</th>
+                <th>Confidence</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody id="history-body">
+              <tr>
+                <td colspan="5">
+                  <div class="empty">Loading...</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    let activeFilter = 'all';
+    let chartInstance = null;
+
+    // Page Switching Logic
+    function switchPage(pageId, navElement) {
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      navElement.classList.add('active');
+      
+      const titles = {
+        'classification': 'Classification',
+        'analytics': 'Analytics Report',
+        'history': 'Detection History'
+      };
+      document.getElementById('app-bar-title').innerText = titles[pageId];
+
+      document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+      document.getElementById('page-' + pageId).classList.add('active');
+
+      if (pageId === 'analytics') loadStats();
+      if (pageId === 'history') loadHistory();
+    }
+
+    function initChart(hamCount, spamCount) {
+      const ctx = document.getElementById('spamChart').getContext('2d');
+      if (chartInstance) {
+        chartInstance.data.datasets[0].data = [hamCount, spamCount];
+        chartInstance.update();
+        return;
+      }
+      chartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Safe (Ham)', 'Spam'],
+          datasets: [{
+            data: [hamCount, spamCount],
+            backgroundColor: ['#eaeaea', '#000000'],
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '70%',
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: {
+                font: {
+                  family: 'Inter',
+                  size: 14,
+                  weight: '600'
+                },
+                color: '#000'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    async function loadStats() {
+      try {
+        const d = await (await fetch('/predictions/stats')).json();
+        const total = d.total_predictions || 0;
+        const ham = d.ham_count || 0;
+        const spam = d.spam_count || 0;
+        
+        document.getElementById('s-total').textContent = total;
+        document.getElementById('s-ham').textContent = ham;
+        document.getElementById('s-spam').textContent = spam;
+        
+        initChart(ham, spam);
+      } catch (e) {
+        console.error("Failed to load stats", e);
+      }
+    }
+
+    async function loadHealth() {
+      const el = document.getElementById('s-health');
+      try {
+        const d = await (await fetch('/health')).json();
+        if(d.status === 'ok' && d.model_loaded) {
+          el.textContent = 'ONLINE';
+          el.style.color = '#2e7d32'; // Make it pop just slightly
+        } else {
+          el.textContent = 'DEGRADED';
+          el.style.color = '#f57c00';
+        }
+      } catch {
+        el.textContent = 'OFFLINE';
+        el.style.color = '#d32f2f';
+      }
+    }
+
+    async function predict() {
+      const text = document.getElementById('input').value.trim();
+      if (!text) return;
+      
+      const btn = document.getElementById('btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="material-icons" style="font-size: 18px;">hourglass_empty</span> ANALYZING...';
+      
+      try {
+        const res = await fetch('/predict', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({text}),
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.detail || 'Error');
+
+        const rh = document.getElementById('rh');
+        const rIcon = document.getElementById('result-icon');
+        const rText = document.getElementById('result-text');
+        
+        rh.className = 'result-banner visible ' + d.prediction;
+        
+        if (d.prediction === 'spam') {
+          rIcon.innerText = 'warning';
+          rText.innerHTML = '<strong>SPAM DETECTED:</strong> This message has been flagged as malicious.';
+        } else {
+          rIcon.innerText = 'verified_user';
+          rText.innerHTML = '<strong>SAFE MESSAGE:</strong> This message appears to be standard ham.';
+        }
+        
+        document.getElementById('r-conf').innerHTML = '<strong>' + d.confidence + '%</strong>';
+        document.getElementById('r-ham').innerHTML = '<strong>' + d.ham_probability.toFixed(4) + '</strong>';
+        document.getElementById('r-spam').innerHTML = '<strong>' + d.spam_probability.toFixed(4) + '</strong>';
+        
+        document.getElementById('metrics-panel').classList.add('visible');
+        loadStats();
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-icons" style="font-size: 18px;">search</span> ANALYZE MESSAGE';
+      }
+    }
+
+    document.getElementById('input').addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { 
+        e.preventDefault(); 
+        predict(); 
+      }
+    });
+
+    function filterHistory(f, el) {
+      activeFilter = f;
+      document.querySelectorAll('.filter-btn').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      loadHistory();
+    }
+
+    async function loadHistory() {
+      const tbody = document.getElementById('history-body');
+      try {
+        let url = '/predictions?limit=50';
+        if (activeFilter !== 'all') url += '&label=' + activeFilter;
+        
+        const data = await (await fetch(url)).json();
+        
+        if (!data.length) { 
+          tbody.innerHTML = '<tr><td colspan="5"><div class="empty">No predictions recorded yet.</div></td></tr>'; 
+          return; 
+        }
+
+        let h = '';
+        data.forEach(r => {
+          const t = new Date(r.created_at).toLocaleString(undefined, {
+            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+          });
+          h += '<tr>'
+            + '<td><strong>#' + r.id + '</strong></td>'
+            + '<td class="cell-text" title="' + esc(r.input_text) + '"><strong>' + esc(r.input_text) + '</strong></td>'
+            + '<td><span class="chip ' + r.prediction + '">' + r.prediction + '</span></td>'
+            + '<td><strong>' + r.confidence + '%</strong></td>'
+            + '<td class="time-cell">' + t + '</td>'
+            + '</tr>';
+        });
+        tbody.innerHTML = h;
+      } catch {
+        tbody.innerHTML = '<tr><td colspan="5"><div class="empty">Failed to load history data.</div></td></tr>';
+      }
+    }
+
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    loadHealth();
+    loadStats();
+    loadHistory();
+  </script>
+</body>
+</html>

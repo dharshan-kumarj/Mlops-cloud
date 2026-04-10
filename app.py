@@ -8,14 +8,20 @@ Every prediction is saved to PostgreSQL.
 import os
 import re
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Optional
 
 import joblib
 from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database import Prediction, get_db, init_db
+
+STATIC_DIR = Path(__file__).parent / "static"
 
 # ──────────────────────────────────────────────
 # Model loading at startup
@@ -57,6 +63,20 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    """Serve the frontend UI."""
+    return FileResponse(STATIC_DIR / "index.html")
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # ──────────────────────────────────────────────
 # Schemas
