@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spam Classifier</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a24;
+      --surface2: #22222f;
+      --border: #2e2e3e;
+      --text: #e4e4ed;
+      --text-dim: #8888a0;
+      --accent: #7c5cfc;
+      --accent-glow: rgba(124, 92, 252, 0.25);
+      --green: #34d399;
+      --red: #f87171;
+      --amber: #fbbf24;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #7c5cfc, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p {
+      color: var(--text-dim);
+      margin-top: .4rem;
+      font-size: .95rem;
+    }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: .75rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      text-align: center;
+      transition: transform .2s, border-color .2s;
+    }
+    .stat-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+    }
+    .stat-card .value {
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+    .stat-card .label {
+      color: var(--text-dim);
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-top: .2rem;
+    }
+    .stat-card.total .value  { color: var(--accent); }
+    .stat-card.ham .value    { color: var(--green); }
+    .stat-card.spam .value   { color: var(--red); }
+    .stat-card.health .value { font-size: 1rem; }
+
+    /* ── Predict section ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .card h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+
+    .input-group {
+      display: flex;
+      gap: .75rem;
+    }
+    .input-group textarea {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      padding: .85rem 1rem;
+      font-family: inherit;
+      font-size: .95rem;
+      resize: vertical;
+      min-height: 56px;
+      max-height: 140px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .input-group textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .input-group textarea::placeholder {
+      color: var(--text-dim);
+    }
+
+    button {
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      transition: all .2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #7c5cfc, #6548d9);
+      color: #fff;
+      padding: .85rem 1.8rem;
+      font-size: .95rem;
+      white-space: nowrap;
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+    .btn-primary:active { transform: scale(.97); }
+    .btn-primary:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ── Result ── */
+    .result {
+      margin-top: 1.2rem;
+      display: none;
+    }
+    .result.visible { display: block; }
+
+    .result-banner {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.2rem;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 1.05rem;
+    }
+    .result-banner.spam {
+      background: rgba(248, 113, 113, .1);
+      border: 1px solid rgba(248, 113, 113, .3);
+      color: var(--red);
+    }
+    .result-banner.ham {
+      background: rgba(52, 211, 153, .1);
+      border: 1px solid rgba(52, 211, 153, .3);
+      color: var(--green);
+    }
+    .result-banner .icon { font-size: 1.6rem; }
+    .result-meta {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .6rem;
+      margin-top: .8rem;
+    }
+    .result-meta .meta-item {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: .65rem .8rem;
+      text-align: center;
+    }
+    .result-meta .meta-item .val {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+    .result-meta .meta-item .lbl {
+      color: var(--text-dim);
+      font-size: .72rem;
+      text-transform: uppercase;
+      margin-top: .15rem;
+    }
+
+    /* ── History section ── */
+    .filter-bar {
+      display: flex;
+      gap: .5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      background: var(--surface2);
+      color: var(--text-dim);
+      padding: .45rem 1rem;
+      font-size: .82rem;
+      border: 1px solid var(--border);
+    }
+    .filter-btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .history-table th {
+      text-align: left;
+      color: var(--text-dim);
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      padding: .6rem .8rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .history-table td {
+      padding: .7rem .8rem;
+      border-bottom: 1px solid var(--border);
+      font-size: .88rem;
+      vertical-align: middle;
+    }
+    .history-table tr:last-child td { border-bottom: none; }
+    .history-table tr:hover td {
+      background: rgba(124, 92, 252, .04);
+    }
+    .history-table .text-col {
+      max-width: 320px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .badge {
+      display: inline-block;
+      padding: .2rem .6rem;
+      border-radius: 6px;
+      font-size: .76rem;
+      font-weight: 600;
+    }
+    .badge.spam {
+      background: rgba(248, 113, 113, .15);
+      color: var(--red);
+    }
+    .badge.ham {
+      background: rgba(52, 211, 153, .15);
+      color: var(--green);
+    }
+
+    .empty-state {
+      text-align: center;
+      color: var(--text-dim);
+      padding: 2rem;
+      font-size: .9rem;
+    }
+
+    /* ── Loading spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      .input-group { flex-direction: column; }
+      .result-meta { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <h1>🛡️ Spam Classifier</h1>
+      <p>Calibrated ensemble model · GaussianNB + LogisticRegression + SVC</p>
+    </header>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+      <div class="stat-card total">
+        <div class="value" id="stat-total">—</div>
+        <div class="label">Total</div>
+      </div>
+      <div class="stat-card ham">
+        <div class="value" id="stat-ham">—</div>
+        <div class="label">Ham</div>
+      </div>
+      <div class="stat-card spam">
+        <div class="value" id="stat-spam">—</div>
+        <div class="label">Spam</div>
+      </div>
+      <div class="stat-card health">
+        <div class="value" id="stat-health">…</div>
+        <div class="label">API Status</div>
+      </div>
+    </div>
+
+    <!-- Predict -->
+    <div class="card">
+      <h2>✉️ Classify a Message</h2>
+      <div class="input-group">
+        <textarea id="msg-input" placeholder="Type or paste an SMS message…" rows="2"></textarea>
+        <button class="btn-primary" id="predict-btn" onclick="predict()">Classify</button>
+      </div>
+      <div class="result" id="result">
+        <div class="result-banner" id="result-banner">
+          <span class="icon" id="result-icon"></span>
+          <span id="result-label"></span>
+        </div>
+        <div class="result-meta">
+          <div class="meta-item">
+            <div class="val" id="r-confidence">—</div>
+            <div class="lbl">Confidence</div>
+          </div>
+          <div class="meta-item">
+            <div class="val" id="r-ham-prob">—</div>
+            <div class="lbl">Ham Prob</div>
+          </div>
+          <div class="meta-item">
+            <div class="val" id="r-spam-prob">—</div>
+            <div class="lbl">Spam Prob</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="card">
+      <h2>📋 Prediction History</h2>
+      <div class="filter-bar">
+        <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+        <button class="filter-btn" onclick="setFilter('spam', this)">🚫 Spam</button>
+        <button class="filter-btn" onclick="setFilter('ham', this)">✅ Ham</button>
+      </div>
+      <div id="history-container">
+        <div class="empty-state">No predictions yet. Classify a message above!</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = '';  // same origin
+
+    // ── Stats & Health ──
+    async function loadStats() {
+      try {
+        const res = await fetch(`${API}/predictions/stats`);
+        const data = await res.json();
+        document.getElementById('stat-total').textContent = data.total_predictions;
+        document.getElementById('stat-ham').textContent = data.ham_count;
+        document.getElementById('stat-spam').textContent = data.spam_count;
+      } catch { /* silent */ }
+    }
+
+    async function loadHealth() {
+      const el = document.getElementById('stat-health');
+      try {
+        const res = await fetch(`${API}/health`);
+        const data = await res.json();
+        if (data.status === 'ok' && data.model_loaded) {
+          el.textContent = '● Online';
+          el.style.color = 'var(--green)';
+        } else {
+          el.textContent = '● Degraded';
+          el.style.color = 'var(--amber)';
+        }
+      } catch {
+        el.textContent = '● Offline';
+        el.style.color = 'var(--red)';
+      }
+    }
+
+    // ── Predict ──
+    async function predict() {
+      const input = document.getElementById('msg-input');
+      const btn = document.getElementById('predict-btn');
+      const text = input.value.trim();
+      if (!text) return;
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>';
+
+      try {
+        const res = await fetch(`${API}/predict`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.detail || 'Request failed');
+
+        // Show result
+        const result = document.getElementById('result');
+        const banner = document.getElementById('result-banner');
+        const icon = document.getElementById('result-icon');
+        const label = document.getElementById('result-label');
+
+        banner.className = `result-banner ${data.prediction}`;
+        icon.textContent = data.prediction === 'spam' ? '🚫' : '✅';
+        label.textContent = data.prediction === 'spam'
+          ? 'This message is SPAM'
+          : 'This message is HAM (safe)';
+
+        document.getElementById('r-confidence').textContent = data.confidence + '%';
+        document.getElementById('r-ham-prob').textContent = data.ham_probability.toFixed(4);
+        document.getElementById('r-spam-prob').textContent = data.spam_probability.toFixed(4);
+
+        result.classList.add('visible');
+
+        // Refresh history & stats
+        loadStats();
+        loadHistory();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Classify';
+      }
+    }
+
+    // Submit on Enter (Shift+Enter for newline)
+    document.getElementById('msg-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        predict();
+      }
+    });
+
+    // ── History ──
+    let currentFilter = 'all';
+
+    function setFilter(filter, el) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      loadHistory();
+    }
+
+    async function loadHistory() {
+      const container = document.getElementById('history-container');
+      try {
+        let url = `${API}/predictions?limit=50`;
+        if (currentFilter !== 'all') url += `&label=${currentFilter}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data.length) {
+          container.innerHTML = '<div class="empty-state">No predictions found.</div>';
+          return;
+        }
+
+        let html = `<table class="history-table">
+          <thead><tr>
+            <th>#</th><th>Message</th><th>Result</th><th>Confidence</th><th>Time</th>
+          </tr></thead><tbody>`;
+
+        data.forEach(r => {
+          const time = new Date(r.created_at).toLocaleString();
+          html += `<tr>
+            <td>${r.id}</td>
+            <td class="text-col" title="${r.input_text.replace(/"/g, '&quot;')}">${escapeHtml(r.input_text)}</td>
+            <td><span class="badge ${r.prediction}">${r.prediction}</span></td>
+            <td>${r.confidence}%</td>
+            <td style="color:var(--text-dim);font-size:.8rem">${time}</td>
+          </tr>`;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      } catch {
+        container.innerHTML = '<div class="empty-state">Failed to load history.</div>';
+      }
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // ── Init ──
+    loadHealth();
+    loadStats();
+    loadHistory();
+  </script>
+</body>
+</html>
