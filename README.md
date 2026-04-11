@@ -91,20 +91,28 @@ curl -X POST http://localhost:8000/predict \
 ### 6. Use the saved model directly
 
 ```python
-import re
 import joblib
 
 model = joblib.load("ensemble.pkl")
 vectorizer = joblib.load("vectorizer.pkl")
+features = vectorizer.transform(["You won a free prize!"]).toarray()
 
-text = "You won a free prize! Click here now!"
-cleaned = re.sub(r"[^a-z0-9\s]", "", text.lower())
-features = vectorizer.transform([cleaned]).toarray()
+print(model.predict(features)[0]) # 0=ham, 1=spam
+```
 
-prediction = model.predict(features)[0]        # 0=ham, 1=spam
-confidence = model.predict_proba(features)[0].max()
+### 7. Run using Docker (Containerized Setup)
 
-print(f"{'spam' if prediction else 'ham'} ({confidence:.1%})")
+Because the pre-trained model files (`*.pkl`) are large, they are excluded from the git repository. The Docker setup utilizes a **Multi-stage Build** to automatically train the models inside the container and serve them securely.
+
+*Note: Ensure your `.env` contains your external Render PostgreSQL connection string (`DATABASE_URL`).*
+
+```bash
+# Build and spin up the FastAPI service
+docker-compose up --build -d
+```
+Stop the service when finished:
+```bash
+docker-compose down
 ```
 
 ## Project Structure
@@ -117,9 +125,14 @@ mlops/
 ├── evaluate.py           # Evaluation & interactive inference
 ├── app.py                # FastAPI application
 ├── database.py           # SQLAlchemy models & DB config
+├── Dockerfile            # Multi-stage container builder
+├── docker-compose.yml    # App orchestrator (loads .env)
+├── requirements.txt      # Hardlocked ML dependencies
+├── static/               
+│   ├── index.html        # Clean B&W UI
+│   └── style.css         
 ├── .env                  # PostgreSQL credentials (not committed)
-├── ensemble.pkl          # Saved ensemble model (generated)
-├── vectorizer.pkl        # Saved TF-IDF vectorizer (generated)
+├── .dockerignore
 ├── .gitignore
 └── README.md
 ```

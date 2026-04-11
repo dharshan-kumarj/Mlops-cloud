@@ -1,0 +1,18 @@
+# Environment
+.env
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Models & Data 
+*.pkl
+*.ipynb
+
+# Git
+.git
+.gitignore
