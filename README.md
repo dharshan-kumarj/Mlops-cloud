@@ -142,3 +142,6 @@ mlops/
 - Python 3.10+
 - scikit-learn, pandas, numpy, joblib
 - CPU only — no GPU required
+
+
+Tetsing the CICD after adding credentials ..
