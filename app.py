@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database import Prediction, get_db, init_db
+from prometheus_fastapi_instrumentator import Instrumentator
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -62,6 +63,8 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+Instrumentator().instrument(app).expose(app)
 
 app.add_middleware(
     CORSMiddleware,
