@@ -15,7 +15,7 @@ dist/
 build/
 
 # Model artifacts
-*.pkl
+
 
 # Byte-compiled / optimized
 *.so
