@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: spam_classifier_api
+    ports:
+      - "8000:8000"
+    # Loads external database URL (Render DB) from local .env
+    env_file:
+      - .env
