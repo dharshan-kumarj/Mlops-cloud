@@ -1,9 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MUI Spam Classifier</title>
+  <meta name="description"
+    content="MsgSift — Intelligent AI-powered SMS spam detection. Reliable, fast, and accurate message classification.">
+  <title>MsgSift — Spam Intelligence</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -11,13 +14,14 @@
   <link href="/static/style.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
 
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="brand">
       <span class="material-icons">data_usage</span>
-      Classifi
+      MsgSift
     </div>
     <div class="nav-links">
       <div class="nav-item active" onclick="switchPage('classification', this)">
@@ -42,6 +46,10 @@
     <div id="page-classification" class="page active">
       <div class="card">
         <h2 class="card-title">Analyze New Message</h2>
+        <p style="font-size:13px; color:#888; margin-bottom:20px; margin-top:-16px;">
+          Powered by <strong>MsgSift</strong>
+          <!-- <a href="https://msgsift.dharshankumar.com" target="_blank" style="color:#000; text-decoration:underline;">msgsift.dharshankumar.com</a> -->
+        </p>
         <div class="form-group">
           <textarea id="input" placeholder="Paste the SMS or message content here to analyze its safety..."></textarea>
         </div>
@@ -50,13 +58,13 @@
             <span class="material-icons" style="font-size: 18px;">search</span> ANALYZE MESSAGE
           </button>
         </div>
-        
+
         <!-- Results -->
         <div class="result-banner" id="rh">
           <span class="material-icons" id="result-icon">info</span>
           <span id="result-text">Waiting for input...</span>
         </div>
-        
+
         <div class="metrics" id="metrics-panel">
           <div class="metric-item">
             <div class="lbl">Confidence Score</div>
@@ -97,7 +105,7 @@
           </div>
         </div>
       </div>
-      
+
       <div class="card">
         <h2 class="card-title">Spam Report Visualization</h2>
         <div style="position: relative; height:300px; width:100%">
@@ -115,7 +123,7 @@
           <button class="filter-btn" onclick="filterHistory('ham', this)">Safe Only</button>
           <button class="filter-btn" onclick="filterHistory('spam', this)">Spam Only</button>
         </div>
-        
+
         <div style="overflow-x: auto;">
           <table>
             <thead>
@@ -149,7 +157,7 @@
     function switchPage(pageId, navElement) {
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
       navElement.classList.add('active');
-      
+
       const titles = {
         'classification': 'Classification',
         'analytics': 'Analytics Report',
@@ -209,11 +217,11 @@
         const total = d.total_predictions || 0;
         const ham = d.ham_count || 0;
         const spam = d.spam_count || 0;
-        
+
         document.getElementById('s-total').textContent = total;
         document.getElementById('s-ham').textContent = ham;
         document.getElementById('s-spam').textContent = spam;
-        
+
         initChart(ham, spam);
       } catch (e) {
         console.error("Failed to load stats", e);
@@ -224,7 +232,7 @@
       const el = document.getElementById('s-health');
       try {
         const d = await (await fetch('/health')).json();
-        if(d.status === 'ok' && d.model_loaded) {
+        if (d.status === 'ok' && d.model_loaded) {
           el.textContent = 'ONLINE';
           el.style.color = '#2e7d32'; // Make it pop just slightly
         } else {
@@ -240,16 +248,16 @@
     async function predict() {
       const text = document.getElementById('input').value.trim();
       if (!text) return;
-      
+
       const btn = document.getElementById('btn');
       btn.disabled = true;
       btn.innerHTML = '<span class="material-icons" style="font-size: 18px;">hourglass_empty</span> ANALYZING...';
-      
+
       try {
         const res = await fetch('/predict', {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({text}),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
         });
         const d = await res.json();
         if (!res.ok) throw new Error(d.detail || 'Error');
@@ -257,9 +265,9 @@
         const rh = document.getElementById('rh');
         const rIcon = document.getElementById('result-icon');
         const rText = document.getElementById('result-text');
-        
+
         rh.className = 'result-banner visible ' + d.prediction;
-        
+
         if (d.prediction === 'spam') {
           rIcon.innerText = 'warning';
           rText.innerHTML = '<strong>SPAM DETECTED:</strong> This message has been flagged as malicious.';
@@ -267,11 +275,11 @@
           rIcon.innerText = 'verified_user';
           rText.innerHTML = '<strong>SAFE MESSAGE:</strong> This message appears to be standard ham.';
         }
-        
+
         document.getElementById('r-conf').innerHTML = '<strong>' + d.confidence + '%</strong>';
         document.getElementById('r-ham').innerHTML = '<strong>' + d.ham_probability.toFixed(4) + '</strong>';
         document.getElementById('r-spam').innerHTML = '<strong>' + d.spam_probability.toFixed(4) + '</strong>';
-        
+
         document.getElementById('metrics-panel').classList.add('visible');
         loadStats();
       } catch (e) {
@@ -283,9 +291,9 @@
     }
 
     document.getElementById('input').addEventListener('keydown', e => {
-      if (e.key === 'Enter' && !e.shiftKey) { 
-        e.preventDefault(); 
-        predict(); 
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        predict();
       }
     });
 
@@ -301,12 +309,12 @@
       try {
         let url = '/predictions?limit=50';
         if (activeFilter !== 'all') url += '&label=' + activeFilter;
-        
+
         const data = await (await fetch(url)).json();
-        
-        if (!data.length) { 
-          tbody.innerHTML = '<tr><td colspan="5"><div class="empty">No predictions recorded yet.</div></td></tr>'; 
-          return; 
+
+        if (!data.length) {
+          tbody.innerHTML = '<tr><td colspan="5"><div class="empty">No predictions recorded yet.</div></td></tr>';
+          return;
         }
 
         let h = '';
@@ -339,4 +347,5 @@
     loadHistory();
   </script>
 </body>
+
 </html>

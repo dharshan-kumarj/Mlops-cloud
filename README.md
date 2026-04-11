@@ -144,4 +144,3 @@ mlops/
 - CPU only — no GPU required
 
 
-Tetsing the CICD after adding credentials ..
