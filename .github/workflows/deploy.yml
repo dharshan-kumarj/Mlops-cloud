@@ -1,0 +1,112 @@
+name: CI/CD — Spam Classifier
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/spam-classifier
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # CI: Test → Build → Push
+  # ─────────────────────────────────────────────────────────────
+  ci:
+    name: Test & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Pull source code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Python environment
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # 3. Install Python dependencies
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # 4. Run tests — pipeline stops here if any test fails
+      - name: Run pytest
+        run: pytest tests/ -v
+
+      # 5. Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 6. Build and push with two tags: `latest` + git SHA for traceability
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+
+  # ─────────────────────────────────────────────────────────────
+  # CD: Deploy to Azure VM (only if CI passes)
+  # ─────────────────────────────────────────────────────────────
+  cd:
+    name: Deploy to Azure VM
+    runs-on: ubuntu-latest
+    needs: ci  # waits for CI job to succeed
+
+    steps:
+      # 1. SSH into VM, pull and restart containers
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          timeout: 60s
+          script_stop: true  # stop on first error
+          script: |
+            cd ~/projects/Mlops-cloud
+
+            # Pull the freshly built image
+            docker-compose pull
+
+            # Gracefully stop old containers
+            docker-compose down
+
+            # Start new containers in detached mode
+            docker-compose up -d
+
+            # Show running containers for the logs
+            docker ps
+
+      # 2. Health check — verify the app is serving requests
+      - name: Health check
+        run: |
+          echo "Waiting 10s for app to start..."
+          sleep 10
+
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.VM_HOST }}:8000/health)
+
+          if [ "$STATUS" == "200" ]; then
+            echo "✅ Health check passed (HTTP $STATUS)"
+          else
+            echo "❌ Health check failed (HTTP $STATUS) — rolling back..."
+
+            # Rollback: SSH in and restart from the previous SHA
+            ssh -o StrictHostKeyChecking=no \
+              -i <(echo "${{ secrets.VM_SSH_KEY }}") \
+              ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} \
+              "cd ~/projects/Mlops-cloud && \
+               docker-compose down && \
+               docker pull ${{ env.IMAGE }}:${{ github.event.before }} && \
+               IMAGE_TAG=${{ github.event.before }} docker-compose up -d"
+
+            exit 1  # mark the pipeline as failed
+          fi
