@@ -26,15 +26,16 @@ body {
 
 .brand {
   padding: 24px 20px;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 800;
-  letter-spacing: -0.5px;
+  letter-spacing: -1px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   border-bottom: 1px solid #eaeaea;
   color: #000;
   text-transform: uppercase;
+  user-select: none;
 }
 
 .nav-links {
